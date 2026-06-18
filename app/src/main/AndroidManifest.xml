@@ -11,6 +11,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ChromaTap">
+
+        <!-- Main launcher activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -18,10 +20,24 @@
             android:theme="@style/Theme.ChromaTap">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- IME Service — registers app as a keyboard -->
+        <service
+            android:name=".ChromaTapIME"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+
     </application>
 
 </manifest>

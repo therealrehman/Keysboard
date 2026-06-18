@@ -46,6 +46,7 @@ import androidx.compose.ui.zIndex
 import com.therealrehman.chromatap.ui.theme.ChromaTapTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.sqrt
 
 // High-fidelity active key states matching Samsung KeysCafe's neon transitions
 enum class DynamicKeyState {
@@ -104,7 +105,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun KeysCafeScreen(modifier: Modifier = Modifier) {
+fun KeysCafeScreen(
+    modifier: Modifier = Modifier,
+    onKeyOutput: ((String) -> Unit)? = null   // null = standalone app mode
+) {
     var typedText by remember { mutableStateOf("") }
     var isShifted by remember { mutableStateOf(false) }
     var layoutMode by remember { mutableStateOf(KeyboardLayoutMode.LETTERS) }
@@ -249,7 +253,11 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
             char = char.uppercase()
             isShifted = false
         }
-        typedText += char
+        if (onKeyOutput != null) {
+            onKeyOutput(char)   // IME mode — send to active text field
+        } else {
+            typedText += char   // Standalone app mode — show in preview
+        }
         triggerHaptic()
     }
 
@@ -723,7 +731,9 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                                     keyboardContainerOffset = keyboardContainerOffset,
                                     onClick = {
                                         triggerHaptic()
-                                        if (typedText.isNotEmpty()) {
+                                        if (onKeyOutput != null) {
+                                            onKeyOutput("BACKSPACE")
+                                        } else if (typedText.isNotEmpty()) {
                                             typedText = typedText.substring(0, typedText.length - 1)
                                         }
                                     },
@@ -752,7 +762,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             rowIdx = 0,
                             isShifted = false,
                             keyboardContainerOffset = keyboardContainerOffset,
-                            onKeyPress = { typedText += it; triggerHaptic() },
+                            onKeyPress = { if (onKeyOutput != null) { onKeyOutput(it); triggerHaptic() } else { typedText += it; triggerHaptic() } },
                             onRegisterBounds = { code, offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
                                 val relativeTop = offset.y - keyboardContainerOffset.y
@@ -773,7 +783,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             rowIdx = 1,
                             isShifted = false,
                             keyboardContainerOffset = keyboardContainerOffset,
-                            onKeyPress = { typedText += it; triggerHaptic() },
+                            onKeyPress = { if (onKeyOutput != null) { onKeyOutput(it); triggerHaptic() } else { typedText += it; triggerHaptic() } },
                             onRegisterBounds = { code, offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
                                 val relativeTop = offset.y - keyboardContainerOffset.y
@@ -794,7 +804,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             rowIdx = 2,
                             isShifted = false,
                             keyboardContainerOffset = keyboardContainerOffset,
-                            onKeyPress = { typedText += it; triggerHaptic() },
+                            onKeyPress = { if (onKeyOutput != null) { onKeyOutput(it); triggerHaptic() } else { typedText += it; triggerHaptic() } },
                             onRegisterBounds = { code, offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
                                 val relativeTop = offset.y - keyboardContainerOffset.y
@@ -839,7 +849,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                                             .background(Color(0xFF141414))
                                             .clickable {
                                                 triggerHaptic()
-                                                typedText += emoji
+                                                if (onKeyOutput != null) onKeyOutput(emoji) else typedText += emoji
                                             }
                                             .padding(6.dp),
                                         contentAlignment = Alignment.Center
@@ -952,7 +962,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             keyboardContainerOffset = keyboardContainerOffset,
                             onClick = {
                                 triggerHaptic()
-                                typedText += ","
+                                if (onKeyOutput != null) onKeyOutput(",") else typedText += ","
                             },
                             onRegisterBounds = { offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
@@ -984,7 +994,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             keyboardContainerOffset = keyboardContainerOffset,
                             onClick = {
                                 triggerHaptic()
-                                typedText += " "
+                                if (onKeyOutput != null) onKeyOutput("SPACE") else typedText += " "
                             },
                             onRegisterBounds = { offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
@@ -1016,7 +1026,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             keyboardContainerOffset = keyboardContainerOffset,
                             onClick = {
                                 triggerHaptic()
-                                typedText += "."
+                                if (onKeyOutput != null) onKeyOutput(".") else typedText += "."
                             },
                             onRegisterBounds = { offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
@@ -1048,7 +1058,7 @@ fun KeysCafeScreen(modifier: Modifier = Modifier) {
                             keyboardContainerOffset = keyboardContainerOffset,
                             onClick = {
                                 triggerHaptic()
-                                typedText += "\n"
+                                if (onKeyOutput != null) onKeyOutput("ENTER") else typedText += "\n"
                             },
                             onRegisterBounds = { offset, size ->
                                 val relativeLeft = offset.x - keyboardContainerOffset.x
@@ -1334,7 +1344,7 @@ fun KeyNeonRippleOverlay(
         val cy = glow.yFraction * size.height
 
         // Max radius = diagonal of keyboard so it covers every corner from any key
-        val maxRadius = kotlin.math.sqrt(
+        val maxRadius = sqrt(
             (size.width * size.width + size.height * size.height).toDouble()
         ).toFloat()
 
