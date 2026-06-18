@@ -47,6 +47,10 @@ import com.therealrehman.chromatap.ui.theme.ChromaTapTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.sqrt
+import android.provider.Settings
+import android.content.Intent
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 
 // High-fidelity active key states matching Samsung KeysCafe's neon transitions
 enum class DynamicKeyState {
@@ -87,18 +91,170 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ChromaTapTheme {
-                Scaffold(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black),
-                    contentWindowInsets = WindowInsets.systemBars
-                ) { innerPadding ->
-                    KeysCafeScreen(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
+                SetupScreen(activity = this)
+            }
+        }
+    }
+}
+
+@Composable
+fun SetupScreen(activity: ComponentActivity) {
+    val context = activity
+    val imeManager = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
+    // Check if our keyboard is enabled
+    val enabledMethods = imeManager.enabledInputMethodList
+    val ourPkg = context.packageName
+    val isEnabled = enabledMethods.any { it.packageName == ourPkg }
+
+    // Check if it's the default
+    val defaultId = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.DEFAULT_INPUT_METHOD
+    )
+    val isDefault = defaultId?.contains(ourPkg) == true
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF050505)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+            modifier = Modifier.padding(32.dp)
+        ) {
+            // App name + logo area
+            Text(
+                text = "🎹",
+                fontSize = 64.sp
+            )
+            Text(
+                text = "ChromaTap Keyboard",
+                color = Color(0xFFFF9900),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Neon RGB animated keyboard\nwith radial tap effects",
+                color = Color(0xFF888888),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Step 1 — Enable
+            SetupStep(
+                number = "1",
+                title = "Enable Keyboard",
+                subtitle = "Allow ChromaTap in system settings",
+                done = isEnabled,
+                onClick = {
+                    context.startActivity(
+                        android.content.Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
                     )
                 }
+            )
+
+            // Step 2 — Set as default
+            SetupStep(
+                number = "2",
+                title = "Set as Default",
+                subtitle = "Select ChromaTap as your keyboard",
+                done = isDefault,
+                onClick = {
+                    imeManager.showInputMethodPicker()
+                }
+            )
+
+            if (isDefault) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0A2A0A), RoundedCornerShape(12.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "✅  ChromaTap is active!\nOpen any app and start typing.",
+                        color = Color(0xFF00FF88),
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SetupStep(
+    number: String,
+    title: String,
+    subtitle: String,
+    done: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (done) Color(0xFF0A1A0A) else Color(0xFF111111),
+                RoundedCornerShape(14.dp)
+            )
+            .border(
+                BorderStroke(1.dp, if (done) Color(0xFF00AA44) else Color(0xFF333333)),
+                RoundedCornerShape(14.dp)
+            )
+            .clickable { if (!done) onClick() }
+            .padding(18.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Number badge
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        if (done) Color(0xFF00AA44) else Color(0xFFFF9900),
+                        RoundedCornerShape(20.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (done) "✓" else number,
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = if (done) Color(0xFF00FF88) else Color(0xFFFFFFFF),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = subtitle,
+                    color = Color(0xFF666666),
+                    fontSize = 12.sp
+                )
+            }
+            if (!done) {
+                Text(
+                    text = "›",
+                    color = Color(0xFFFF9900),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
