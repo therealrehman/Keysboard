@@ -1,6 +1,0 @@
-{
-  "name": "KeysCafe Keyboard",
-  "description": "High-fidelity Samsung KeysCafe replica keyboard simulating unique key tap animations, RGB lighting, and custom colors.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -1,26 +1,3 @@
-# Gradle
-.gradle/
-build/
-local.properties
-
-# Android
 *.apk
-*.ap_
-*.dex
-*.class
-bin/
-gen/
-out/
-
-# IDE
-.idea/
-*.iml
-.navigation/
-captures/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Env
-.env
+build/
+.gradle/

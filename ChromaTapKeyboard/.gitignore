@@ -1,0 +1,32 @@
+# Gradle files
+*.iml
+.gradle
+.kotlin
+/local.properties
+/build
+/captures
+
+# Android Studio IDE files
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+
+# Build outputs
+/app/build
+.externalNativeBuild
+.cxx
+
+# Signing / secrets
+local.properties
+.env
+debug.keystore
+*.jks
+*.keystore
+
+# APK files (don't commit APKs to git)
+*.apk
+*.aab
