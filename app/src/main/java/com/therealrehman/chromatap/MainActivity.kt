@@ -1,4 +1,4 @@
-package com.therealrehman.chromatap
+package com.example
 
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
-import com.therealrehman.chromatap.ui.theme.ChromaTapTheme
+import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -58,7 +58,11 @@ data class GlowParticle(
     val xFraction: Float,
     val yFraction: Float,
     val color: Color,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    // 3-color radial rings: inner, mid, outer
+    val colorInner: Color = Color(0xFFFFFFFF),
+    val colorMid: Color = Color(0xFF00FFFF),
+    val colorOuter: Color = Color(0xFFFF00D4)
 )
 
 // Active layout switching mode
@@ -81,7 +85,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ChromaTapTheme {
+            MyApplicationTheme {
                 Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1243,11 +1247,19 @@ fun KeysCafeHardwareKey(
                     onClick()
                 }
                 .drawBehind {
-                    // Draw neon ripple tap circles
+                    // White flash burst on the key surface itself
                     if (rippleAlpha > 0f) {
-                        val maxRadius = size.width * 1.5f
+                        val maxRadius = size.width * 1.2f
                         drawCircle(
-                            color = Color(0xFFFF8800).copy(alpha = rippleAlpha),
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFFFFFFFF).copy(alpha = rippleAlpha),
+                                    Color(0xFF00FFFF).copy(alpha = rippleAlpha * 0.6f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width / 2f, size.height / 2f),
+                                radius = maxRadius * rippleScale
+                            ),
                             radius = maxRadius * rippleScale,
                             center = Offset(size.width / 2f, size.height / 2f)
                         )
@@ -1273,24 +1285,46 @@ fun KeyNeonRippleOverlay(
     glow: GlowParticle,
     onAnimationEnd: () -> Unit
 ) {
-    val scale = remember { Animatable(0.05f) }
-    val opacity = remember { Animatable(1.0f) }
-    
+    // 3 separate ring animatables - staggered start for layered effect
+    val scaleInner  = remember { Animatable(0f) }
+    val scaleMid    = remember { Animatable(0f) }
+    val scaleOuter  = remember { Animatable(0f) }
+    val alphaInner  = remember { Animatable(0f) }
+    val alphaMid    = remember { Animatable(0f) }
+    val alphaOuter  = remember { Animatable(0f) }
+
     val endCallback = rememberUpdatedState(onAnimationEnd)
 
     LaunchedEffect(glow.id) {
+        // INNER RING — White, fastest, leads
         launch {
-            scale.animateTo(
-                targetValue = 5.0f,
-                animationSpec = tween(750, easing = LinearOutSlowInEasing)
-            )
+            alphaInner.snapTo(0.95f)
+            scaleInner.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
         }
         launch {
-            opacity.animateTo(
-                targetValue = 0.0f,
-                animationSpec = tween(750, easing = LinearOutSlowInEasing)
-            )
-            // Clear particle from render cycle upon completion
+            alphaInner.animateTo(0f, tween(480, easing = LinearOutSlowInEasing))
+        }
+
+        // MID RING — Cyan, 60ms after inner
+        launch {
+            delay(60)
+            alphaMid.snapTo(0.85f)
+            scaleMid.animateTo(1f, tween(540, easing = FastOutSlowInEasing))
+        }
+        launch {
+            delay(60)
+            alphaMid.animateTo(0f, tween(540, easing = LinearOutSlowInEasing))
+        }
+
+        // OUTER RING — Pink/Magenta, 120ms after inner, slowest
+        launch {
+            delay(120)
+            alphaOuter.snapTo(0.75f)
+            scaleOuter.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
+        }
+        launch {
+            delay(120)
+            alphaOuter.animateTo(0f, tween(600, easing = LinearOutSlowInEasing))
             endCallback.value()
         }
     }
@@ -1298,26 +1332,66 @@ fun KeyNeonRippleOverlay(
     Canvas(modifier = Modifier.fillMaxSize()) {
         val cx = glow.xFraction * size.width
         val cy = glow.yFraction * size.height
-        // Covers the WHOLE keyboard: making target radius expand beautifully to cover complete container width
-        val maxTargetRadius = size.width * 1.50f
-        val currentRadius = maxTargetRadius * scale.value
 
-        if (currentRadius > 0f && opacity.value > 0f) {
-            val radialBrush = Brush.radialGradient(
-                colors = listOf(
-                    glow.color.copy(alpha = 0.98f * opacity.value),
-                    glow.color.copy(alpha = 0.75f * opacity.value),
-                    glow.color.copy(alpha = 0.50f * opacity.value),
-                    glow.color.copy(alpha = 0.25f * opacity.value),
-                    glow.color.copy(alpha = 0.08f * opacity.value),
-                    Color.Transparent
-                ),
-                center = Offset(cx, cy),
-                radius = currentRadius
-            )
+        // Max radius = diagonal of keyboard so it covers every corner from any key
+        val maxRadius = kotlin.math.sqrt(
+            (size.width * size.width + size.height * size.height).toDouble()
+        ).toFloat()
+
+        // Draw 3 rings from outer to inner (painter's algorithm)
+        // OUTER — Pink/Magenta ring
+        if (alphaOuter.value > 0f) {
+            val r = maxRadius * scaleOuter.value
             drawCircle(
-                brush = radialBrush,
-                radius = currentRadius,
+                brush = Brush.radialGradient(
+                    0.0f to glow.colorOuter.copy(alpha = 0f),
+                    0.55f to glow.colorOuter.copy(alpha = 0.10f * alphaOuter.value),
+                    0.75f to glow.colorOuter.copy(alpha = 0.65f * alphaOuter.value),
+                    0.88f to glow.colorOuter.copy(alpha = 0.80f * alphaOuter.value),
+                    0.95f to glow.colorOuter.copy(alpha = 0.40f * alphaOuter.value),
+                    1.0f to Color.Transparent,
+                    center = Offset(cx, cy),
+                    radius = r
+                ),
+                radius = r,
+                center = Offset(cx, cy)
+            )
+        }
+
+        // MID — Cyan ring
+        if (alphaMid.value > 0f) {
+            val r = maxRadius * 0.80f * scaleMid.value
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.0f to glow.colorMid.copy(alpha = 0f),
+                    0.50f to glow.colorMid.copy(alpha = 0.08f * alphaMid.value),
+                    0.72f to glow.colorMid.copy(alpha = 0.60f * alphaMid.value),
+                    0.87f to glow.colorMid.copy(alpha = 0.75f * alphaMid.value),
+                    0.95f to glow.colorMid.copy(alpha = 0.35f * alphaMid.value),
+                    1.0f to Color.Transparent,
+                    center = Offset(cx, cy),
+                    radius = r
+                ),
+                radius = r,
+                center = Offset(cx, cy)
+            )
+        }
+
+        // INNER — White ring, brightest core
+        if (alphaInner.value > 0f) {
+            val r = maxRadius * 0.55f * scaleInner.value
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.0f to glow.colorInner.copy(alpha = 0.90f * alphaInner.value),
+                    0.30f to glow.colorInner.copy(alpha = 0.55f * alphaInner.value),
+                    0.65f to glow.colorInner.copy(alpha = 0.70f * alphaInner.value),
+                    0.85f to glow.colorInner.copy(alpha = 0.80f * alphaInner.value),
+                    0.95f to glow.colorInner.copy(alpha = 0.30f * alphaInner.value),
+                    1.0f to Color.Transparent,
+                    center = Offset(cx, cy),
+                    radius = r
+                ),
+                radius = r,
                 center = Offset(cx, cy)
             )
         }
