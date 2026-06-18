@@ -1,4 +1,4 @@
-package com.example
+package com.therealrehman.chromatap
 
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
-import com.example.ui.theme.MyApplicationTheme
+import com.therealrehman.chromatap.ui.theme.ChromaTapTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            ChromaTapTheme {
                 Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
